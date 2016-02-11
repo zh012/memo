@@ -1,0 +1,141 @@
+
+set daemon 10
+
+# with start delay 240
+
+set logfile /var/log/monit.log
+
+set idfile /var/lib/monit/id
+
+set statefile /var/lib/monit/state
+
+set mailserver localhost
+
+set eventqueue
+    basedir /var/lib/monit/events
+    slots 100
+
+set mail-format {
+     from: monit@$HOST
+  subject: monit alert --  $EVENT $SERVICE
+  message: $EVENT Service $SERVICE
+                Date:        $DATE
+                Action:      $ACTION
+                Host:        $HOST
+                Description: $DESCRIPTION
+           Your faithful employee,
+           Monit
+}
+
+
+set alert jerry.zhang@thescore.com   # receive all alerts
+# set alert manager@foo.bar not on { instance, action }
+
+set httpd port 1011 and
+  use address 127.0.0.1
+  allow 127.0.0.1
+
+
+###############################################################################
+## Services
+###############################################################################
+
+check program report with path /opt/report-scripts/report.py
+  if status != 0 then alert
+
+
+check system localhost
+  if loadavg (1min) > 4 then alert
+  if loadavg (5min) > 2 then alert
+  if memory usage > 80% then alert
+  if swap usage > 40% then alert
+  if cpu usage (user) > 90% then alert
+
+
+check filesystem datafs with path /dev/xvdf every 6 cycles
+  start program  = "/bin/mount /dev/xvdf /data"
+  stop program  = "/bin/umount /data"
+  if failed permission 660 then unmonitor
+  if space usage > %80 then alret
+
+
+check process nginx with pidfile /run/nginx.pid
+  group www-data
+  group nginx
+  start program = "/etc/init.d/nginx start"
+  stop program = "/etc/init.d/nginx stop"
+  if failed port 80 protocol http request "/" then restart
+  if 5 restarts with 5 cycles then timeout
+  depend nginx_bin
+  depend nginx_rc
+
+check file nginx_bin with path /usr/sbin/nginx
+  group nginx
+  include /etc/monit/templates/rootbin
+
+check file nginx_rc with path /etc/init.d/nginx
+  group nginx
+  include /etc/monit/templates/rootbin
+
+
+## Check filesystem permissions, uid, gid, space and inode usage. Other services,
+## such as databases, may depend on this resource and an automatically graceful
+## stop may be cascaded to them before the filesystem will become full and data
+## lost.
+#
+#  check filesystem datafs with path /dev/sdb1
+#    start program  = "/bin/mount /data"
+#    stop program  = "/bin/umount /data"
+#    if failed permission 660 then unmonitor
+#    if failed uid root then unmonitor
+#    if failed gid disk then unmonitor
+#    if space usage > 80% for 5 times within 15 cycles then alert
+#    if space usage > 99% then stop
+#    if inode usage > 30000 then alert
+#    if inode usage > 99% then stop
+#    group server
+#
+#
+## Check a file's timestamp. In this example, we test if a file is older
+## than 15 minutes and assume something is wrong if its not updated. Also,
+## if the file size exceed a given limit, execute a script
+#
+#  check file database with path /data/mydatabase.db
+#    if failed permission 700 then alert
+#    if failed uid data then alert
+#    if failed gid data then alert
+#    if timestamp > 15 minutes then alert
+#    if size > 100 MB then exec "/my/cleanup/script" as uid dba and gid dba
+#
+#
+## Check directory permission, uid and gid.  An event is triggered if the
+## directory does not belong to the user with uid 0 and gid 0.  In addition,
+## the permissions have to match the octal description of 755 (see chmod(1)).
+#
+#  check directory bin with path /bin
+#    if failed permission 755 then unmonitor
+#    if failed uid 0 then unmonitor
+#    if failed gid 0 then unmonitor
+#
+#
+## Check a remote host availability by issuing a ping test and check the
+## content of a response from a web server. Up to three pings are sent and
+## connection to a port and an application level network check is performed.
+#
+#  check host myserver with address 192.168.1.1
+#    if failed icmp type echo count 3 with timeout 3 seconds then alert
+#    if failed port 3306 protocol mysql with timeout 15 seconds then alert
+#    if failed url http://user:password@www.foo.bar:8080/?querystring
+#       and content == 'action="j_security_check"'
+#       then alert
+#
+#
+###############################################################################
+## Includes
+###############################################################################
+##
+## It is possible to include additional configuration parts from other files or
+## directories.
+#
+#  include /etc/monit/conf.d/*
+#

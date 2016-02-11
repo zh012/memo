@@ -1,0 +1,16 @@
+uwsgi:
+    gid: www-data
+    uid: www-data
+    buffer-size: 32768
+    chdir: /home/ubuntu/track/
+    logto: /home/ubuntu/track/logs/uwsgi.log
+    master: true
+    module: server_gevent:application
+    socket: /tmp/trackserver0.sock
+    pidfile: /tmp/trackserver0.pid
+    processes: 4
+    gevent: 100
+    async: 100
+    listen: 65535
+    gevent-monkey-patch: true
+    vacuum: true
