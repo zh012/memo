@@ -2,12 +2,15 @@
 
 ### Install Andy from http://www.andyroid.net/
 
-### Install add
+### Install adb
 
     brew install fb-adb
     android update sdk --no-ui --filter 'platform-tools'
 
 # Root Andy by the follwoing step
+
+    adb kill-server
+    adb root
 
     adb install Superuser.apk
     adb push su /storage/sdcard0/
